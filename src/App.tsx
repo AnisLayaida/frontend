@@ -12,12 +12,19 @@ import { CreateLeaveRequestPage } from './pages/leave-requests/CreateLeaveReques
 import { UsersPage } from './pages/users/UsersPage'
 import { NotFoundPage } from './pages/NotFoundPage'
 
+// Import CSS
+import './index.css'
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       retry: 1,
       refetchOnWindowFocus: false,
+      staleTime: 5 * 60 * 1000, // 5 minutes
     },
+    mutations: {
+      retry: 1,
+    }
   },
 })
 
@@ -26,54 +33,56 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <BrowserRouter>
-          <Routes>
-            {/* Public routes */}
-            <Route path="/login" element={<LoginPage />} />
-            
-            {/* Protected routes */}
-            <Route path="/" element={
-              <ProtectedRoute>
-                <Layout />
-              </ProtectedRoute>
-            }>
-              <Route index element={<Navigate to="/dashboard" replace />} />
-              <Route path="dashboard" element={<DashboardPage />} />
+          <div className="bt-fade-in">
+            <Routes>
+              {/* Public routes */}
+              <Route path="/login" element={<LoginPage />} />
               
-              {/* Employee routes */}
-              <Route path="leave-requests" element={
-                <ProtectedRoute requiredRole={[3]}>
-                  <LeaveRequestsPage />
+              {/* Protected routes */}
+              <Route path="/" element={
+                <ProtectedRoute>
+                  <Layout />
                 </ProtectedRoute>
-              } />
-              <Route path="leave-requests/create" element={
-                <ProtectedRoute requiredRole={[3]}>
-                  <CreateLeaveRequestPage />
-                </ProtectedRoute>
-              } />
+              }>
+                <Route index element={<Navigate to="/dashboard" replace />} />
+                <Route path="dashboard" element={<DashboardPage />} />
+                
+                {/* Employee routes */}
+                <Route path="leave-requests" element={
+                  <ProtectedRoute requiredRole={[3]}>
+                    <LeaveRequestsPage />
+                  </ProtectedRoute>
+                } />
+                <Route path="leave-requests/create" element={
+                  <ProtectedRoute requiredRole={[3]}>
+                    <CreateLeaveRequestPage />
+                  </ProtectedRoute>
+                } />
+                
+                {/* Manager routes */}
+                <Route path="team-requests" element={
+                  <ProtectedRoute requiredRole={[1, 2]}>
+                    <LeaveRequestsPage />
+                  </ProtectedRoute>
+                } />
+                
+                {/* Admin routes */}
+                <Route path="all-requests" element={
+                  <ProtectedRoute requiredRole={[1]}>
+                    <LeaveRequestsPage />
+                  </ProtectedRoute>
+                } />
+                <Route path="users" element={
+                  <ProtectedRoute requiredRole={[1, 2]}>
+                    <UsersPage />
+                  </ProtectedRoute>
+                } />
+              </Route>
               
-              {/* Manager routes */}
-              <Route path="team-requests" element={
-                <ProtectedRoute requiredRole={[1, 2]}>
-                  <LeaveRequestsPage />
-                </ProtectedRoute>
-              } />
-              
-              {/* Admin routes */}
-              <Route path="all-requests" element={
-                <ProtectedRoute requiredRole={[1]}>
-                  <LeaveRequestsPage />
-                </ProtectedRoute>
-              } />
-              <Route path="users" element={
-                <ProtectedRoute requiredRole={[1, 2]}>
-                  <UsersPage />
-                </ProtectedRoute>
-              } />
-            </Route>
-            
-            {/* 404 route */}
-            <Route path="*" element={<NotFoundPage />} />
-          </Routes>
+              {/* 404 route */}
+              <Route path="*" element={<NotFoundPage />} />
+            </Routes>
+          </div>
         </BrowserRouter>
       </AuthProvider>
     </QueryClientProvider>

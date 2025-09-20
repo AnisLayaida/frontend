@@ -18,7 +18,6 @@ export function LoginPage() {
     formState: { errors, isSubmitting }
   } = useForm<LoginFormData>()
 
-  // Redirect if already logged in
   if (user && !isLoading) {
     const from = location.state?.from?.pathname || '/dashboard'
     return <Navigate to={from} replace />
