@@ -1,0 +1,18 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+build/
+
+# Generated files
+*.tsbuildinfo
+
+# Environment files
+.env*
+
+# Coverage
+coverage/
+
+# Logs
+*.log

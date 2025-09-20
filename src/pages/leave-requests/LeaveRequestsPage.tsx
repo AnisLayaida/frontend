@@ -1,29 +1,17 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Plus, Filter, Search, Calendar, Download } from 'lucide-react'
-import { Link } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
 import { leaveRequestsApi } from '../../services/api'
 import { LoadingSpinner } from '../../components/common/LoadingSpinner'
 import { LeaveRequestTable } from '../../components/leave-requests/LeaveRequestTable'
 import { LeaveRequestFilters } from '../../components/leave-requests/LeaveRequestFilters'
-
-type LeaveRequest = {
-  id: number
-  user: {
-    firstName: string
-    surname: string
-  }
-  leaveType: {
-    leaveType: string
-  }
-  reason?: string
-  status: string
-  // Add other fields as needed
-}
+import type { LeaveRequest } from '../../types'
 
 export function LeaveRequestsPage() {
   const { user } = useAuth()
+  const location = useLocation()
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
   const [showFilters, setShowFilters] = useState(false)
@@ -31,24 +19,30 @@ export function LeaveRequestsPage() {
   const isEmployee = user?.roleId === 3
   const isManager = user?.roleId === 2
   const isAdmin = user?.roleId === 1
+  
+  // Determine which requests to fetch based on route and role
+  const isTeamRequests = location.pathname.includes('team-requests')
+  const isAllRequests = location.pathname.includes('all-requests')
 
-  // Fetch requests based on user role
-  const { data: requests, isLoading, refetch } = useQuery({
-  const filteredRequests = requests?.filter((request: LeaveRequest) => {
-    const matchesSearch = searchTerm === '' || 
-      request.user.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      request.user.surname.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      request.leaveType.leaveType.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      request.reason?.toLowerCase().includes(searchTerm.toLowerCase())
-
-    const matchesStatus = statusFilter === 'all' || request.status === statusFilter
-
-    return matchesSearch && matchesStatus
-  }) || []
+  // Fetch requests based on user role and current route
+  const { data: requests = [], isLoading, refetch } = useQuery({
+    queryKey: ['requests', user?.roleId, user?.userId, location.pathname],
+    queryFn: () => {
+      if (isAllRequests && isAdmin) {
+        return leaveRequestsApi.getAll()
+      } else if (isTeamRequests && (isManager || isAdmin)) {
+        return leaveRequestsApi.getPending()
+      } else if (isEmployee) {
+        return leaveRequestsApi.getMyRequests(user!.userId)
+      } else {
+        return leaveRequestsApi.getPending()
+      }
+    },
+    enabled: !!user?.userId
   })
 
   // Filter requests based on search and status
-  const filteredRequests = requests?.filter(request => {
+  const filteredRequests = requests?.filter((request: LeaveRequest) => {
     const matchesSearch = searchTerm === '' || 
       request.user.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       request.user.surname.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -61,15 +55,44 @@ export function LeaveRequestsPage() {
   }) || []
 
   const getPageTitle = () => {
+    if (isAllRequests) return 'All Leave Requests'
+    if (isTeamRequests) return 'Team Leave Requests' 
     if (isEmployee) return 'My Leave Requests'
-    if (isManager) return 'Team Leave Requests'
-    return 'All Leave Requests'
+    return 'Leave Requests'
   }
 
   const getPageDescription = () => {
+    if (isAllRequests) return 'Manage all leave requests across the organization'
+    if (isTeamRequests) return 'Review and approve your team\'s leave requests'
     if (isEmployee) return 'View and manage your annual leave requests'
-    if (isManager) return 'Review and approve your team\'s leave requests'
-    return 'Manage all leave requests across the organization'
+    return 'Manage leave requests'
+  }
+
+  const handleApprove = async (requestId: number) => {
+    try {
+      await leaveRequestsApi.approve(requestId)
+      refetch()
+    } catch (error) {
+      console.error('Error approving request:', error)
+    }
+  }
+
+  const handleReject = async (requestId: number) => {
+    try {
+      await leaveRequestsApi.reject(requestId)
+      refetch()
+    } catch (error) {
+      console.error('Error rejecting request:', error)
+    }
+  }
+
+  const handleCancel = async (requestId: number) => {
+    try {
+      await leaveRequestsApi.cancel(requestId)
+      refetch()
+    } catch (error) {
+      console.error('Error cancelling request:', error)
+    }
   }
 
   if (isLoading) {
@@ -96,7 +119,7 @@ export function LeaveRequestsPage() {
               {isEmployee && (
                 <div className="flex items-center space-x-2 text-sm text-gray-500">
                   <span>•</span>
-                  <span>{filteredRequests.filter((r: any) => r.status === 'Pending').length} pending</span>
+                  <span>{filteredRequests.filter(r => r.status === 'Pending').length} pending</span>
                 </div>
               )}
             </div>
@@ -106,7 +129,6 @@ export function LeaveRequestsPage() {
             {/* Export Button */}
             <button
               onClick={() => {
-                // Implement export functionality
                 console.log('Export requests')
               }}
               className="btn-outline flex items-center space-x-2"
@@ -207,7 +229,7 @@ export function LeaveRequestsPage() {
               <div>
                 <p className="text-sm font-medium text-gray-600">Approved</p>
                 <p className="text-2xl font-bold text-green-600">
-                  {requests?.filter((r: any) => r.status === 'Approved').length || 0}
+                  {requests?.filter(r => r.status === 'Approved').length || 0}
                 </p>
               </div>
               <div className="h-12 w-12 bg-green-500 rounded-xl flex items-center justify-center">
@@ -239,18 +261,9 @@ export function LeaveRequestsPage() {
         <LeaveRequestTable
           requests={filteredRequests}
           userRole={user?.roleId || 3}
-          onApprove={(requestId) => {
-            // Handle approve
-            leaveRequestsApi.approve(requestId).then(() => refetch())
-          }}
-          onReject={(requestId) => {
-            // Handle reject
-            leaveRequestsApi.reject(requestId).then(() => refetch())
-          }}
-          onCancel={(requestId) => {
-            // Handle cancel
-            leaveRequestsApi.cancel(requestId).then(() => refetch())
-          }}
+          onApprove={handleApprove}
+          onReject={handleReject}
+          onCancel={handleCancel}
         />
       </div>
     </div>

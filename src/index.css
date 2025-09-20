@@ -6,3 +6,66 @@ body {
   margin: 0;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
 }
+
+/* BT Custom Component Styles */
+@layer components {
+  .bt-gradient {
+    @apply bg-gradient-to-r from-bt-purple to-bt-blue;
+  }
+
+  .card {
+    @apply bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden;
+  }
+
+  .card-header {
+    @apply bt-gradient p-6;
+  }
+
+  .card-body {
+    @apply p-6;
+  }
+
+  .btn-primary {
+    @apply bg-gradient-to-r from-bt-purple to-bt-blue text-white px-6 py-3 rounded-lg hover:from-bt-purple-dark hover:to-blue-700 transition-all duration-200 font-semibold disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .btn-secondary {
+    @apply bg-gray-600 text-white px-6 py-3 rounded-lg hover:bg-gray-700 transition-colors font-semibold;
+  }
+
+  .btn-outline {
+    @apply border-2 border-bt-purple text-bt-purple px-6 py-3 rounded-lg hover:bg-bt-purple hover:text-white transition-colors font-semibold;
+  }
+
+  .input-field {
+    @apply w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-bt-purple focus:border-transparent transition-colors;
+  }
+
+  .select-field {
+    @apply w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-bt-purple focus:border-transparent bg-white transition-colors;
+  }
+
+  .nav-link {
+    @apply flex items-center px-4 py-3 text-gray-700 rounded-lg hover:bg-bt-purple hover:text-white transition-colors;
+  }
+
+  .nav-link-active {
+    @apply flex items-center px-4 py-3 bt-gradient text-white rounded-lg;
+  }
+
+  .status-approved {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800;
+  }
+
+  .status-rejected {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800;
+  }
+
+  .status-pending {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800;
+  }
+
+  .status-cancelled {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800;
+  }
+}

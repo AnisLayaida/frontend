@@ -38,6 +38,14 @@ export interface LeaveRequest {
   leaveType: LeaveType;
 }
 
+export interface CreateLeaveRequestData {
+  userId: number;
+  leaveTypeId: number;
+  startDate: string;
+  endDate: string;
+  reason?: string;
+}
+
 export interface ApiResponse<T> {
   data: T;
 }
@@ -59,4 +67,21 @@ export interface AuthContext {
   login: (email: string, password: string) => Promise<void>;
   logout: () => void;
   isLoading: boolean;
+}
+
+// Form interfaces
+export interface CreateUserFormData {
+  firstName: string;
+  surname: string;
+  email: string;
+  password: string;
+  roleId: number;
+  departmentId?: number;
+  officeLocation: string;
+  officeName: string;
+  annualLeaveBalance: number;
+}
+
+export interface UpdateUserFormData extends Partial<CreateUserFormData> {
+  userId: number;
 }

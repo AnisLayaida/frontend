@@ -1,8 +1,13 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
-import { Calendar, ArrowLeft } from 'lucide-react'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { Calendar, ArrowLeft, AlertCircle } from 'lucide-react'
 import { Link } from 'react-router-dom'
+import { useAuth } from '../../contexts/AuthContext'
+import { leaveRequestsApi, leaveTypesApi } from '../../services/api'
+import { LoadingSpinner } from '../../components/common/LoadingSpinner'
+import type { CreateLeaveRequestData } from '../../types'
 
 interface CreateLeaveRequestForm {
   leaveTypeId: number
@@ -13,7 +18,9 @@ interface CreateLeaveRequestForm {
 
 export function CreateLeaveRequestPage() {
   const navigate = useNavigate()
-  const [isSubmitting, setIsSubmitting] = useState(false)
+  const { user } = useAuth()
+  const queryClient = useQueryClient()
+  const [submitError, setSubmitError] = useState('')
   
   const {
     register,
@@ -21,6 +28,24 @@ export function CreateLeaveRequestPage() {
     formState: { errors },
     watch
   } = useForm<CreateLeaveRequestForm>()
+
+  // Fetch leave types
+  const { data: leaveTypes = [], isLoading: leaveTypesLoading } = useQuery({
+    queryKey: ['leaveTypes'],
+    queryFn: () => leaveTypesApi.getAll()
+  })
+
+  // Create leave request mutation
+  const createRequestMutation = useMutation({
+    mutationFn: (data: CreateLeaveRequestData) => leaveRequestsApi.create(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['requests'] })
+      navigate('/leave-requests')
+    },
+    onError: (error: any) => {
+      setSubmitError(error.response?.data?.error?.message || 'Failed to create leave request')
+    }
+  })
 
   const startDate = watch('startDate')
   const endDate = watch('endDate')
@@ -37,17 +62,32 @@ export function CreateLeaveRequestPage() {
   }
 
   const onSubmit = async (data: CreateLeaveRequestForm) => {
-    setIsSubmitting(true)
-    try {
-      // Implement API call here
-      console.log('Creating leave request:', data)
-      // await leaveRequestsApi.create(data)
-      navigate('/leave-requests')
-    } catch (error) {
-      console.error('Error creating leave request:', error)
-    } finally {
-      setIsSubmitting(false)
+    if (!user?.userId) return
+    
+    setSubmitError('')
+    
+    const requestData: CreateLeaveRequestData = {
+      userId: user.userId,
+      leaveTypeId: Number(data.leaveTypeId),
+      startDate: data.startDate,
+      endDate: data.endDate,
+      reason: data.reason || undefined
     }
+
+    createRequestMutation.mutate(requestData)
+  }
+
+  const validateEndDate = (endDate: string) => {
+    if (!startDate || !endDate) return true
+    return new Date(endDate) >= new Date(startDate) || 'End date must be after start date'
+  }
+
+  if (leaveTypesLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <LoadingSpinner size="large" />
+      </div>
+    )
   }
 
   return (
@@ -76,6 +116,13 @@ export function CreateLeaveRequestPage() {
         </div>
         
         <div className="card-body">
+          {submitError && (
+            <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-center space-x-3">
+              <AlertCircle className="h-5 w-5 text-red-500 flex-shrink-0" />
+              <p className="text-sm text-red-700">{submitError}</p>
+            </div>
+          )}
+
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -86,9 +133,11 @@ export function CreateLeaveRequestPage() {
                 className="select-field"
               >
                 <option value="">Select leave type</option>
-                <option value="1">Annual Leave</option>
-                <option value="2">Sick Leave</option>
-                <option value="3">Personal Leave</option>
+                {leaveTypes.map((type: any) => (
+                  <option key={type.leaveTypeId} value={type.leaveTypeId}>
+                    {type.leaveType}
+                  </option>
+                ))}
               </select>
               {errors.leaveTypeId && (
                 <p className="mt-1 text-sm text-red-600">{errors.leaveTypeId.message}</p>
@@ -117,7 +166,10 @@ export function CreateLeaveRequestPage() {
                 </label>
                 <input
                   type="date"
-                  {...register('endDate', { required: 'End date is required' })}
+                  {...register('endDate', { 
+                    required: 'End date is required',
+                    validate: validateEndDate
+                  })}
                   className="input-field"
                   min={startDate || new Date().toISOString().split('T')[0]}
                 />
@@ -153,10 +205,17 @@ export function CreateLeaveRequestPage() {
               </Link>
               <button
                 type="submit"
-                disabled={isSubmitting}
-                className="btn-primary"
+                disabled={createRequestMutation.isPending}
+                className="btn-primary flex items-center space-x-2"
               >
-                {isSubmitting ? 'Submitting...' : 'Submit Request'}
+                {createRequestMutation.isPending ? (
+                  <>
+                    <LoadingSpinner size="small" />
+                    <span>Submitting...</span>
+                  </>
+                ) : (
+                  <span>Submit Request</span>
+                )}
               </button>
             </div>
           </form>
